@@ -9,8 +9,8 @@
 `include "RS.v"
 `include "SLB.v"
 
-`ifndef _CPU
-`define _CPU
+`ifndef __CPU__
+`define __CPU__
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
 
@@ -53,6 +53,79 @@ wire [31:0] IF_issue_pc;
 wire        IF_send_mem;
 wire [31:0] IF_mem_mem_addr;
 
+wire        ID_send_issue;
+wire [5:0]  ID_issue_op;
+wire [4:0]  ID_issue_rs1;
+wire [4:0]  ID_issue_rs2;
+wire [4:0]  ID_issue_rd;
+wire [31:0] ID_issue_imm;
+
+wire                       issue_send_SLB;
+wire                       issue_send_RS;
+wire                       issue_send_ROB;
+wire [31:0]                issue_broadcast_Vj;
+wire [31:0]                issue_broadcast_Vk;
+wire [`ROB_SIZE_LOG - 1:0] issue_broadcast_Qj;
+wire [`ROB_SIZE_LOG - 1:0] issue_broadcast_Qk;
+wire                       issue_broadcast_Pj;
+wire                       issue_broadcast_Pk;
+wire [`OP_SIZE_LOG - 1:0]  issue_broadcast_op;
+wire [4:0]                 issue_broadcast_reg;
+wire [31:0]                issue_broadcast_curPC;
+wire [31:0]                issue_broadcast_imm;
+wire [`ROB_SIZE_LOG - 1:0] issue_broadcast_reorder;
+wire                       issue_send_regfile;
+wire [4:0]                 issue_regfile_reg;
+wire [`ROB_SIZE_LOG - 1:0] issue_regfile_reorder;
+
+wire [31:0]                regfile_issue_Vj;
+wire [31:0]                regfile_issue_Vk;
+wire [`ROB_SIZE_LOG - 1:0] regfile_issue_Qj;
+wire [`ROB_SIZE_LOG - 1:0] regfile_issue_Qk;
+wire                       regfile_issue_Pj;
+wire                       regfile_issue_Pk;
+
+wire                       ALU_send_ROB;
+wire [31:0]                ALU_ROB_value;
+wire [`ROB_SIZE_LOG - 1:0] ALU_ROB_reorder;
+wire [31:0]                ALU_ROB_tarPC;
+
+wire                       RS_send_ALU;
+wire [`OP_SIZE_LOG - 1:0]  RS_ALU_op;
+wire [31:0]                RS_ALU_Vj;
+wire [31:0]                RS_ALU_Vk;
+wire [31:0]                RS_ALU_imm;
+wire [`ROB_SIZE_LOG - 1:0] RS_ALU_reorder;
+wire [31:0]                RS_ALU_curPC;
+
+wire [`ROB_SIZE_LOG - 1:0] ROB_tail;
+wire [31:0]                ROB_IF_jump_pc;
+wire                       ROB_IF_pred;
+wire                       ROB_IF_pred_val;
+wire                       ROB_commit_valid;
+wire [31:0]                ROB_commit_value;
+wire [4:0]                 ROB_commit_reg;
+wire [`ROB_SIZE_LOG - 1:0] ROB_commit_reorder;
+wire                       ROB_SLB_state;
+wire [`ROB_SIZE_LOG - 1:0] ROB_SLB_state_reorder;
+
+wire        mem_send_IF;
+wire [31:0] mem_IF_mem_val;
+wire [1:0]  mem_SLB_state;
+wire        mem_send_SLB;
+wire [31:0] mem_SLB_load_val;
+
+wire                       SLB_send_ROB;
+wire                       SLB_ROB_send_type;
+wire [`ROB_SIZE_LOG - 1:0] SLB_ROB_reorder;
+wire [31:0]                SLB_ROB_value;
+wire                       SLB_ROB_pop_signal;
+wire                       SLB_send_mem;
+wire                       SLB_mem_type;
+wire [31:0]                SLB_mem_store_val;
+wire [31:0]                SLB_mem_addr;
+wire [2:0]                 SLB_mem_size;
+
 IF _IF(
     .clk  (clk_in),
     .rst  (rst_in),
@@ -80,13 +153,6 @@ IF _IF(
     .pred_val (ROB_IF_pred_val)
 );
 
-wire        ID_send_issue;
-wire [5:0]  ID_issue_op;
-wire [4:0]  ID_issue_rs1;
-wire [4:0]  ID_issue_rs2;
-wire [4:0]  ID_issue_rd;
-wire [31:0] ID_issue_imm;
-
 ID _ID(
     .clk  (clk_in),
     .rst  (rst_in),
@@ -102,24 +168,6 @@ ID _ID(
     .rd         (ID_issue_rd),
     .imm        (ID_issue_imm)
 );
-
-wire                       issue_send_SLB;
-wire                       issue_send_RS;
-wire                       issue_send_ROB;
-wire [31:0]                issue_broadcast_Vj;
-wire [31:0]                issue_broadcast_Vk;
-wire [`ROB_SIZE_LOG - 1:0] issue_broadcast_Qj;
-wire [`ROB_SIZE_LOG - 1:0] issue_broadcast_Qk;
-wire                       issue_broadcast_Pj;
-wire                       issue_broadcast_Pk;
-wire [`OP_SIZE_LOG - 1:0]  issue_broadcast_op;
-wire [4:0]                 issue_broadcast_reg;
-wire [31:0]                issue_broadcast_curPC;
-wire [31:0]                issue_broadcast_imm;
-wire [`ROB_SIZE_LOG - 1:0] issue_broadcast_reorder;
-wire                       issue_send_regfile;
-wire [4:0]                 issue_regfile_reg;
-wire [`ROB_SIZE_LOG - 1:0] issue_regfile_reorder;
 
 issue _issue(
     .clk  (clk_in),
@@ -168,13 +216,6 @@ issue _issue(
     .ROB_send (issue_send_ROB)
 );
 
-wire [31:0]                regfile_issue_Vj;
-wire [31:0]                regfile_issue_Vk;
-wire [`ROB_SIZE_LOG - 1:0] regfile_issue_Qj;
-wire [`ROB_SIZE_LOG - 1:0] regfile_issue_Qk;
-wire                       regfile_issue_Pj;
-wire                       regfile_issue_Pk;
-
 Regfile _regfile(
     .clk  (clk_in),
     .rst  (rst_in),
@@ -202,11 +243,6 @@ Regfile _regfile(
     .issue_Pk (regfile_issue_Pk)
 );
 
-wire                       ALU_send_ROB;
-wire [31:0]                ALU_ROB_value;
-wire [`ROB_SIZE_LOG - 1:0] ALU_ROB_reorder;
-wire [31:0]                ALU_ROB_tarPC;
-
 ALU _ALU(
     .clk  (clk_in),
     .rst  (rst_in),
@@ -227,14 +263,6 @@ ALU _ALU(
     .reorder  (ALU_ROB_reorder),
     .targetPC (ALU_ROB_tarPC)
 );
-
-wire                       RS_send_ALU;
-wire [`OP_SIZE_LOG - 1:0]  RS_ALU_op;
-wire [31:0]                RS_ALU_Vj;
-wire [31:0]                RS_ALU_Vk;
-wire [31:0]                RS_ALU_imm;
-wire [`ROB_SIZE_LOG - 1:0] RS_ALU_reorder;
-wire [31:0]                RS_ALU_curPC;
 
 RS _RS(
     .clk  (clk_in),
@@ -269,17 +297,6 @@ RS _RS(
 
     .RS_full  (RS_full)
 );
-
-wire [`ROB_SIZE_LOG - 1:0] ROB_tail;
-wire [31:0]                ROB_IF_jump_pc;
-wire                       ROB_IF_pred;
-wire                       ROB_IF_pred_val;
-wire                       ROB_commit_valid;
-wire [31:0]                ROB_commit_value;
-wire [4:0]                 ROB_commit_reg;
-wire [`ROB_SIZE_LOG - 1:0] ROB_commit_reorder;
-wire                       ROB_SLB_state;
-wire [`ROB_SIZE_LOG - 1:0] ROB_SLB_state_reorder;
 
 ROB _ROB(
     .clk  (clk_in),
@@ -320,12 +337,6 @@ ROB _ROB(
     .jump_rst (jump_rst)
 );
 
-wire        mem_send_IF;
-wire [31:0] mem_IF_mem_val;
-wire [1:0]  mem_SLB_state;
-wire        mem_send_SLB;
-wire [31:0] mem_SLB_load_val;
-
 Memctrl _Memctrl(
     .clk  (clk_in),
     .rst  (rst_in),
@@ -355,17 +366,6 @@ Memctrl _Memctrl(
 
     .mem_state  (mem_SLB_state)
 );
-
-wire                       SLB_send_ROB;
-wire                       SLB_ROB_send_type;
-wire [`ROB_SIZE_LOG - 1:0] SLB_ROB_reorder;
-wire [31:0]                SLB_ROB_value;
-wire                       SLB_ROB_pop_signal;
-wire                       SLB_send_mem;
-wire                       SLB_mem_type;
-wire [31:0]                SLB_mem_store_val;
-wire [31:0]                SLB_mem_addr;
-wire [2:0]                 SLB_mem_size;
 
 SLB _SLB(
     .clk  (clk_in),
