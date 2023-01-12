@@ -23,6 +23,7 @@ module SLB(
     input wire [31:0] issue_imm,
     input wire [`ROB_SIZE_LOG - 1:0] issue_reorder,    
 
+    input wire IF_send_mem,
     input wire mem_valid,
     input wire [1:0] mem_state,
     input wire [31:0] mem_load_val,
@@ -65,36 +66,49 @@ reg [31:0] imm[`SLB_SIZE - 1:0];
 reg [31:0] reorder[`SLB_SIZE - 1:0];
 reg state[`SLB_SIZE - 1:0];
 
-assign SLB_full = (sz == `SLB_SIZE);
+assign SLB_full = (sz >= `SLB_SIZE - 1);
+
+reg has_load;
 
 always @(posedge clk) begin
     if(rst || jump_rst) begin
         sz <= 0;
         h <= 0;
         t <= 0;
-        sz <= 0;
+        mem_send <= 0;
+        SLB_store_ROB_pop_signal <= 0;
+        SLB_send_ROB <= 0;
         for(i = 0;i < `RS_SIZE;i = i + 1) begin
             busy[i] <= 0;
             Pj[i] <= 0;
             Pk[i] <= 0;
+            op[i] <= 0;
+            state[i] <= 0;
         end
     end else if(!rdy) begin
     end else begin
-        if(sz < `SLB_SIZE) begin
-            if(issue_send) begin
-                busy[t] <= 1;
-                t <= (t + 1) & (`SLB_SIZE - 1);
-                sz <= sz + 1;
-                op[t] <= issue_op;
-                Vj[t] <= issue_Vj;
-                Pj[t] <= issue_Pj;
-                Qj[t] <= issue_Qj;
-                Vk[t] <= issue_Vk;
-                Pk[t] <= issue_Pk;
-                Qk[t] <= issue_Qk;
-                imm[t] <= issue_imm;
-                reorder[t] <= issue_reorder;
+        if(issue_send) begin
+            busy[t] <= 1;
+            t <= (t + 1) & (`SLB_SIZE - 1);
+            sz <= sz + 1;
+            op[t] <= issue_op;
+            Vj[t] <= issue_Vj;
+            Pj[t] <= issue_Pj;
+            Qj[t] <= issue_Qj;
+            Vk[t] <= issue_Vk;
+            Pk[t] <= issue_Pk;
+            Qk[t] <= issue_Qk;
+            if(commit_send && issue_Pj && issue_Qj == commit_reorder) begin
+                Pj[t] <= 0;
+                Vj[t] <= commit_value;
             end
+            if(commit_send && issue_Pk && issue_Qk == commit_reorder) begin
+                Pk[t] <= 0;
+                Vk[t] <= commit_value;
+            end
+            imm[t] <= issue_imm;
+            state[t] <= 0;
+            reorder[t] <= issue_reorder;
         end
 
         if(commit_send) begin
@@ -122,10 +136,11 @@ always @(posedge clk) begin
 
         mem_send <= 0;
         SLB_send_ROB <= 0;
+        SLB_store_ROB_pop_signal <= 0;
         if(sz > 0 && (Pj[h] == 0 && Pk[h] == 0)) begin
             if(op[h] >= `LB && op[h] <= `LHU) begin
                 // load
-                if(mem_state == 2'b00) begin
+                if(mem_state == 2'b00 && !IF_send_mem) begin
                     if(mem_valid) begin
                         // received data from memory
                         SLB_send_ROB <= 1;
@@ -140,6 +155,8 @@ always @(posedge clk) begin
                         endcase
                         h <= (h + 1) & (`SLB_SIZE - 1);
                         sz <= sz - 1;
+                        if(issue_send) sz <= sz;
+                        busy[h] <= 0;
                     end else begin
                         mem_send <= 1;
                         mem_type <= 0;
@@ -155,28 +172,31 @@ always @(posedge clk) begin
                 end
             end else begin
                 // store
-                SLB_store_ROB_pop_signal <= 0;
-
                 if(!state[h]) begin
                     SLB_send_ROB <= 1;
                     SLB_send_ROB_type <= 1;
                     SLB_reorder <= reorder[h];
                 end else begin
-                    if(mem_state == 2'b00) begin
+                    if(mem_state == 2'b00 && !IF_send_mem) begin
                         if(mem_valid) begin
                             h <= (h + 1) & (`SLB_SIZE - 1);
                             sz <= sz - 1;
+                            if(issue_send) sz <= sz;
                             SLB_store_ROB_pop_signal <= 1;
                             state[h] <= 0;
+                            busy[h] <= 0;
                         end else begin
                             mem_send <= 1;
                             mem_type <= 1;
                             mem_addr <= Vj[h] + imm[h];
+                            mem_store_val <= Vk[h];
+                            /*
                             case(op[h])
                                 `SB: mem_store_val <= Vk[h][7:0];
                                 `SH: mem_store_val <= Vk[h][15:0];
                                 `SW: mem_store_val <= Vk[h];
                             endcase
+                            */
                             case(op[h])
                                 `SB: mem_size <= 1;
                                 `SH: mem_size <= 2;

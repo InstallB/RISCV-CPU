@@ -48,6 +48,11 @@ assign issue_Pk = vis[rs2] && !(commit_valid && commit_reg == rs1 && commit_reor
 assign issue_Vk = (vis[rs2] && commit_valid && commit_reg == rs1 && commit_reorder == reorder[rs2]) ? commit_value : val[rs2];
 assign issue_Qk = reorder[rs2];
 
+// integer fd;
+// initial begin
+//     fd = $fopen("test.out", "w+"); 
+// end
+
 always @(posedge clk) begin
     if(rst) begin
         for(i = 0;i < 32;i = i + 1) begin
@@ -57,6 +62,11 @@ always @(posedge clk) begin
         end
     end else if(!rdy) begin
     end else begin
+        // for(i = 0;i < 32;i = i + 1) begin
+        //     $fwrite(fd,"%d-%h",i,val[i]);
+        // end
+        // $fdisplay(fd,"");
+
         if(commit_valid) begin
             if(commit_reg != 0) begin
                 val[commit_reg] <= commit_value;

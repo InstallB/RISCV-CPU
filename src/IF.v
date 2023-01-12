@@ -50,6 +50,10 @@ always @(posedge clk) begin
     if(rst) begin
         ID_send <= 0;
         pred_cnt <= 2'b00;
+        mem_fetch_flag <= 0;
+        mem_send <= 0;
+        mem_addr <= 0;
+        pc <= 0;
         for(i = 0;i < `ICACHE_SIZE;i = i + 1) begin
             valid[i] <= 0;
             tag[i] <= 0;
@@ -57,6 +61,7 @@ always @(posedge clk) begin
         end
     end else if(!rdy) begin
     end else begin
+        mem_send <= 0;
         if(!jump_rst) begin
             if(mem_fetch_flag) begin
                 if(mem_valid) begin
@@ -65,6 +70,8 @@ always @(posedge clk) begin
                     val[mem_addr[9:2]] <= mem_val;
                     mem_fetch_flag <= 0;
                     mem_send <= 0;
+                end else begin
+                    mem_send <= 1;
                 end
             end else if(!hit) begin
                 mem_fetch_flag <= 1;
@@ -85,6 +92,9 @@ always @(posedge clk) begin
 
         if(jump_rst) begin
             ID_send <= 0;
+            mem_send <= 0;
+            mem_fetch_flag <= 0;
+            mem_addr <= 0;
             pc <= jump_pc;
         end else if(RS_full || SLB_full || ROB_full) begin
             ID_send <= 0;

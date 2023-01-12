@@ -385,6 +385,7 @@ SLB _SLB(
     .issue_imm      (issue_broadcast_imm),
     .issue_reorder  (issue_broadcast_reorder),     
 
+    .IF_send_mem    (IF_send_mem),
     .mem_valid      (mem_send_SLB),
     .mem_state      (mem_SLB_state),
     .mem_load_val   (mem_SLB_load_val),

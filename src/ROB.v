@@ -55,8 +55,11 @@ reg [31:0] curPC[`ROB_SIZE - 1:0];
 reg [31:0] tarPC[`ROB_SIZE - 1:0];
 reg pred[`ROB_SIZE - 1:0];
 
-assign ROB_full = (sz == `ROB_SIZE);
+assign ROB_full = (sz >= `ROB_SIZE - 1);
 assign ROB_tail = t;
+
+wire readyH = ready[h];
+wire [`OP_SIZE_LOG - 1:0] opH = op[h];
 
 integer i;
 
@@ -66,9 +69,13 @@ always @(posedge clk) begin
         t <= 0;
         sz <= 0;
         jump_rst <= 0;
+        IF_pred <= 0;
+        SLB_state <= 0;
+        commit_send <= 0;
         for(i = 0;i < `ROB_SIZE;i = i + 1) begin
             ready[i] <= 0;
             busy[i] <= 0;
+            op[i] <= 0;
         end
     end else if(!rdy) begin
     end else begin
@@ -130,6 +137,10 @@ always @(posedge clk) begin
             if(!(op[h] >= `SB && op[h] <= `SW) || SLB_store_ROB_pop_signal) begin
                 h <= (h + 1) & (`ROB_SIZE - 1);
                 sz <= sz - 1;
+                if(issue_valid) begin
+                    sz <= sz;
+                    // sz + 1 - 1 = sz;
+                end
                 ready[h] <= 0;
                 busy[h] <= 0;
             end

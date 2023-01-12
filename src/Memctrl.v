@@ -61,15 +61,15 @@ always @(posedge clk) begin
                 pos <= 0;
                 if(SLB_type == 1) begin
                     // store
-                    state = `STORE;
+                    state <= `STORE;
                 end else begin
                     // load
-                    state = `LOAD;
+                    state <= `LOAD;
                     mem_a <= SL_addr;
                     mem_wr <= 0;
                 end
             end else if(IF_valid) begin
-                state = `IF;
+                state <= `IF;
                 mem_a <= IF_addr;
                 mem_wr <= 0;
                 pos <= 0;
@@ -84,12 +84,15 @@ always @(posedge clk) begin
             endcase
             if(pos == 4) begin
                 IF_send <= 1;
-                state <= `IDLE;
+                // state <= `IDLE;
                 mem_a <= 0;
                 pos <= 0;
             end else begin
                 pos <= pos + 1;
                 mem_a <= mem_a + 1;
+            end
+            if(!IF_valid) begin
+                state <= `IDLE;
             end
         end
         if(state == `LOAD) begin

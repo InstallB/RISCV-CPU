@@ -74,7 +74,9 @@ always @(*) begin
     end else if(!rdy) begin
     end else begin
         ROB_send = 1;
-        rename_send = 1;
+        if(!(op >= `BEQ && op <= `BGEU)) begin
+            rename_send = 1;
+        end
         if(op >= `LB && op <= `SW) begin
             SLB_send = 1;
         end else begin

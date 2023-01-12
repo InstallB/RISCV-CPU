@@ -53,7 +53,7 @@ reg [31:0] imm[`RS_SIZE - 1:0];
 reg [31:0] curPC[`RS_SIZE - 1:0];
 reg [31:0] reorder[`RS_SIZE - 1:0];
 
-assign RS_full = (sz == `RS_SIZE);
+assign RS_full = (sz >= `RS_SIZE - 1);
 
 reg [`RS_SIZE_LOG:0] pos;
 
@@ -65,31 +65,38 @@ always @(posedge clk) begin
             busy[i] <= 0;
             Pj[i] <= 0;
             Pk[i] <= 0;
+            op[i] <= 0;
         end
     end else if(!rdy) begin
     end else begin
-        pos = `RS_SIZE;
+        pos = `RS_SIZE + 1;
         for(i = 0;i < `RS_SIZE;i = i + 1) begin
             if(!busy[i]) begin
                 pos = i;
                 i = `RS_SIZE; // break
             end
         end
-        if(pos < `RS_SIZE) begin
-            if(issue_send) begin
-                busy[pos] <= 1;
-                sz <= sz + 1;
-                op[pos] <= issue_op;
-                Vj[pos] <= issue_Vj;
-                Pj[pos] <= issue_Pj;
-                Qj[pos] <= issue_Qj;
-                Vk[pos] <= issue_Vk;
-                Pk[pos] <= issue_Pk;
-                Qk[pos] <= issue_Qk;
-                imm[pos] <= issue_imm;
-                curPC[pos] <= issue_curPC;
-                reorder[pos] <= issue_reorder;
+        if(issue_send) begin
+            busy[pos] <= 1;
+            sz <= sz + 1;
+            op[pos] <= issue_op;
+            Vj[pos] <= issue_Vj;
+            Pj[pos] <= issue_Pj;
+            Qj[pos] <= issue_Qj;
+            Vk[pos] <= issue_Vk;
+            Pk[pos] <= issue_Pk;
+            Qk[pos] <= issue_Qk;
+            if(commit_send && issue_Pj && issue_Qj == commit_reorder) begin
+                Pj[pos] <= 0;
+                Vj[pos] <= commit_value;
             end
+            if(commit_send && issue_Pk && issue_Qk == commit_reorder) begin
+                Pk[pos] <= 0;
+                Vk[pos] <= commit_value;
+            end
+            imm[pos] <= issue_imm;
+            curPC[pos] <= issue_curPC;
+            reorder[pos] <= issue_reorder;
         end
 
         RS_send_ALU <= 0;
@@ -104,6 +111,7 @@ always @(posedge clk) begin
                 ALU_curPC <= curPC[i];
                 busy[i] <= 0;
                 sz <= sz - 1;
+                if(issue_send) sz <= sz;
                 i = `RS_SIZE; // break
             end
         end
