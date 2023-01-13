@@ -112,7 +112,7 @@ always @(posedge clk) begin
                 mem_a <= mem_a + 1;
             end
         end
-        if(state == `STORE && !io_buffer_full) begin
+        if(state == `STORE) begin
             mem_wr <= 1;
             case(pos)
                 0: mem_dout <= store_val[7:0];
