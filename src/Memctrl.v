@@ -126,6 +126,7 @@ always @(posedge clk) begin
                 mem_wr <= 0;
                 mem_a <= 0;
                 pos <= 0;
+                mem_dout <= 0;
             end else begin
                 pos <= pos + 1;
                 mem_a <= mem_a + 1;

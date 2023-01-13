@@ -140,7 +140,7 @@ always @(posedge clk) begin
         if(sz > 0 && (Pj[h] == 0 && Pk[h] == 0)) begin
             if(op[h] >= `LB && op[h] <= `LHU) begin
                 // load
-                if(mem_state == 2'b00 && !IF_send_mem) begin
+                if(mem_state == 2'b00) begin
                     if(mem_valid) begin
                         // received data from memory
                         SLB_send_ROB <= 1;
@@ -157,7 +157,7 @@ always @(posedge clk) begin
                         sz <= sz - 1;
                         if(issue_send) sz <= sz;
                         busy[h] <= 0;
-                    end else begin
+                    end else if(!IF_send_mem) begin
                         mem_send <= 1;
                         mem_type <= 0;
                         mem_addr <= Vj[h] + imm[h];
@@ -177,7 +177,7 @@ always @(posedge clk) begin
                     SLB_send_ROB_type <= 1;
                     SLB_reorder <= reorder[h];
                 end else begin
-                    if(mem_state == 2'b00 && !IF_send_mem) begin
+                    if(mem_state == 2'b00) begin
                         if(mem_valid) begin
                             h <= (h + 1) & (`SLB_SIZE - 1);
                             sz <= sz - 1;
@@ -185,7 +185,7 @@ always @(posedge clk) begin
                             SLB_store_ROB_pop_signal <= 1;
                             state[h] <= 0;
                             busy[h] <= 0;
-                        end else begin
+                        end else if(!IF_send_mem) begin
                             mem_send <= 1;
                             mem_type <= 1;
                             mem_addr <= Vj[h] + imm[h];
